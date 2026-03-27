@@ -17,4 +17,6 @@ dependencies:
   - lightgbm
   - matplotlib
   - jupyter
-  - pip
+  - pip:
+      - torch-geometric
+      - deap

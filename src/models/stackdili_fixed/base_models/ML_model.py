@@ -10,7 +10,7 @@ from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, roc_auc_score, matthews_corrcoef
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH  = os.path.join(SCRIPT_DIR, "../../features/Feature.csv")
+DATA_PATH  = os.path.join(SCRIPT_DIR, "../../../features/Feature.csv")
 SAVE_PATH  = os.path.join(SCRIPT_DIR, "../Model")
 os.makedirs(SAVE_PATH, exist_ok=True)
 
