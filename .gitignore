@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+.env/
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Data files
+data/raw/*
+data/processed/*
+data/external/*
+!data/.gitkeep
+
+# Model / Output
+outputs/
+experiments/
+
+# Numpy / ML artifacts
+*.npy
+*.npz
+*.pkl
+*.pt
+*.pth
+*.h5
+
+# Logs
+*.log
+
+# Docker
+*.tar
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db

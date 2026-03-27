@@ -1,0 +1,20 @@
+name: dili_ml_pipeline_env
+channels:
+  - pytorch
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  - pytorch
+  - torchvision
+  - cpuonly
+  - rdkit
+  - numpy
+  - pandas
+  - scikit-learn
+  - tqdm
+  - xgboost
+  - lightgbm
+  - matplotlib
+  - jupyter
+  - pip
