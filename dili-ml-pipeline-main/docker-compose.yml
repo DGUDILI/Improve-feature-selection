@@ -1,0 +1,8 @@
+services:
+  ml:
+    build: .
+    container_name: dili_ml_pipeline_container
+    volumes:
+      - .:/app
+    working_dir: /app
+    tty: true
