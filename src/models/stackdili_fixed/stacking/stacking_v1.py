@@ -176,5 +176,6 @@ class StackingV1(BaseStacking):
         )
         print("=" * 110)
         print(f"\n최적 임계값: {best_thresh:.2f}")
+        print(f"최종 AUC:    {auc:.4f}")
 
         return {"auc": auc, "threshold": best_thresh}

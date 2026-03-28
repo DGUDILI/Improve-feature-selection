@@ -43,26 +43,43 @@ bash run.sh build
 
 ## 실행 방법
 
-### 기본 실행 (GA 없이 Stacking v1)
-
 ```bash
-./run.sh run
+./run.sh run [stacking_version] [ga_version] [clean]
 ```
 
-### 버전 지정 실행
+| 인자 | 설명 | 기본값 |
+|------|------|--------|
+| `stacking_version` | Stacking 버전 (`v0`, `v0.5`, `v1`) | `v1` |
+| `ga_version` | GA 버전 (`v0`, `v1`, `v4`). 생략하면 GA 없이 실행 | 생략 |
+| `clean` | `clean`을 입력하면 Train-Test 중복 제거 실행 | 생략 |
+
+### 예시
 
 ```bash
-./run.sh run [stacking_version] [ga_version]
-
-# 예시
-./run.sh run v0        # 원본 StackDILI stacking (GA 없이)
-./run.sh run v1        # fixed stacking (GA 없이)
-./run.sh run v0 v0     # 원본 GA + 원본 stacking
-./run.sh run v1 v0     # 원본 GA + fixed stacking
+./run.sh run                      # Stacking v1, GA 없음, 정제 없음
+./run.sh run v1                   # Stacking v1, GA 없음, 정제 없음
+./run.sh run v1 v4                # Stacking v1 + GA v4, 정제 없음
+./run.sh run v1 v4 clean          # Stacking v1 + GA v4 + 데이터 정제
+./run.sh run v1 "" clean          # Stacking v1, GA 없음 + 데이터 정제
+./run.sh run v0.5 v1              # Stacking v0.5 + GA v1, 정제 없음
 ```
 
-> GA는 선택 사항입니다. 생략하면 `Feature.csv`의 전체 피처로 바로 Stacking을 실행합니다.
-> GA는 피처 수에 따라 수십 분 이상 걸릴 수 있습니다.
+> - GA를 생략하면 `Feature.csv`의 전체 피처로 바로 Stacking을 실행합니다.
+> - GA는 피처 수에 따라 수십 분 이상 걸릴 수 있습니다.
+> - 데이터 정제(`clean`)는 Train-Test 중복 제거가 필요한 경우에만 사용하세요.
+
+### 결과 저장 위치
+
+버전 조합별로 별도 디렉토리에 저장되므로 결과가 덮어써지지 않습니다.
+
+```
+src/models/stackdili_fixed/Model/
+├── stacking_v1/                     # ./run.sh run v1
+├── stacking_v1_clean/               # ./run.sh run v1 "" clean
+├── stacking_v1_ga_v4/               # ./run.sh run v1 v4
+├── stacking_v1_ga_v4_clean/         # ./run.sh run v1 v4 clean
+└── stacking_v0.5_ga_v1_clean/       # ./run.sh run v0.5 v1 clean
+```
 
 ### 컨테이너 쉘 접속 (직접 실험할 때)
 
@@ -70,7 +87,7 @@ bash run.sh build
 ./run.sh shell
 
 # 컨테이너 안에서
-conda run -n dili_ml_pipeline_env python src/train.py --stacking v1 --ga v0
+conda run -n dili_ml_pipeline_env python src/train.py --stacking v1 --ga v4 --clean
 ```
 
 ---
@@ -82,23 +99,27 @@ conda run -n dili_ml_pipeline_env python src/train.py --stacking v1 --ga v0
 | 버전 | 파일 | 설명 |
 |------|------|------|
 | `v0` | `ga/ga_v0.py` | 원본 StackDILI GA — DEAP 기반, RF 5-fold CV 피트니스 |
+| `v1` | `ga/ga_v1.py` | MRMR + Boruta 앙상블 (분산 필터링 → MRMR → Boruta 교집합/합집합) |
+| `v4` | `ga/ga_v4.py` | XGBoost L1/L2 정규화 — CV로 최적 reg_alpha/reg_lambda 탐색, 중요도 > 0 피처 선택 |
+| `v5` | `ga/ga_v5.py` | 듀얼 패스 — Path A: VT+RF Top-128, Path B: SMILES→GCN→CrossAttention → 256-dim 임베딩 추가 |
 
 ### Stacking
 
 | 버전 | 파일 | 설명 |
 |------|------|------|
 | `v0` | `stacking/stacking_v0.py` | 원본 StackDILI — 직접 예측 기반, ExtraTrees 메타 모델 |
-| `v1` | `stacking/stacking_v1.py` | fixed — OOF 기반, LogisticRegression 메타 모델 + 피처 힌트 |
+| `v0.5` | `stacking/stacking_v0_5.py` | OOF 기반, LR/SVC(스케일) + ExtraTrees 메타 모델 |
+| `v1` | `stacking/stacking_v1.py` | OOF 기반, LogisticRegression 메타 모델 + 피처 힌트 + MCC 임계값 최적화 |
 
-**v0 vs v1 차이:**
+**Stacking 버전 비교:**
 
-| | v0 (원본) | v1 (fixed) |
-|---|---|---|
-| 예측 방식 | 직접 예측 (데이터 누수 있음) | OOF (누수 없음) |
-| 메타 모델 | ExtraTreesClassifier | LogisticRegression |
-| 반복 횟수 | 베이스 5회 + 메타 10회 | 1회 (결정론적) |
-| 피처 힌트 | 없음 | TOP 5 피처 추가 |
-| 임계값 최적화 | 없음 | 있음 (MCC 기준) |
+| | `v0` | `v0.5` | `v1` |
+|---|---|---|---|
+| 예측 방식 | 직접 예측 (데이터 누수) | OOF 5-fold | OOF 5-fold |
+| 베이스 모델 | RF, ET, HistGB, XGB | LR, SVC, RF, XGB, LGBM | RF, ET, HistGB, XGB |
+| 메타 모델 | ExtraTrees | ExtraTrees | LogisticRegression |
+| 피처 힌트 | 없음 | 없음 | TOP 5 피처 추가 |
+| 임계값 최적화 | 없음 | 없음 | 있음 (MCC 기준) |
 
 ---
 
@@ -108,18 +129,27 @@ conda run -n dili_ml_pipeline_env python src/train.py --stacking v1 --ga v0
 [전처리팀] Feature.py
      ↓ src/features/Feature.csv 생성
      ↓
-[GA팀, 선택] ga_v0.py → select_features()
+[자동] Feature_raw.csv 백업
+     ↓ 최초 실행 시 Feature.csv → Feature_raw.csv 자동 백업
+     ↓ 이후 매 실행 전 Feature_raw.csv → Feature.csv 자동 복원
+     ↓
+[데이터 정제, 선택] make_clean_data.py  ← --clean 옵션 지정 시 실행
+     ↓ Train-Test 중복 제거
+     ↓
+[GA, 선택] ga_vN.py → select_features()  ← --ga 옵션 지정 시 실행
      ↓ 선택된 피처로 Feature.csv 덮어쓰기
      ↓
-[전처리팀] make_clean_data.py
-     ↓ src/features/Feature_cleaned.csv 생성 (Train-Test 중복 제거)
+[스태킹] stacking_vN.py → fit() → evaluate()
+     ↓ src/models/stackdili_fixed/Model/stacking_{sv}_ga_{gv}/ 에 pkl 저장
      ↓
-[스태킹팀] stacking_vN.py → fit() → evaluate()
-     ↓ src/models/stackdili_fixed/Model/ 에 pkl 저장
-     ↓
-결과 출력 (ACC / AUC / MCC / F1 / Prec / Sens / Spec)
-OOF AUC / Eval AUC
+결과 출력 (OOF AUC / Eval AUC)
 ```
+
+### Feature.csv 보호 방식
+
+- **최초 실행 시**: `Feature.csv`를 `Feature_raw.csv`로 자동 백업합니다.
+- **이후 매 실행 전**: `Feature_raw.csv` → `Feature.csv`로 자동 복원합니다.
+- GA가 `Feature.csv`를 덮어써도 다음 실행 전 원본으로 되돌아갑니다.
 
 ---
 
