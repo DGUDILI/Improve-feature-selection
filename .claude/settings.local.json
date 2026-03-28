@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash run.sh run v1 v2)",
+      "Bash(bash run.sh run v1 v4)"
+    ]
+  }
+}
