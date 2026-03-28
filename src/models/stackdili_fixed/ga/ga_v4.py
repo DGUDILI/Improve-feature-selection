@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import matthews_corrcoef
+from sklearn.metrics import roc_auc_score
 from xgboost import XGBClassifier
 
 from models.stackdili_fixed.ga.base import BaseGA
@@ -22,21 +22,31 @@ class GAv4(BaseGA):
 
     def __init__(
         self,
-        reg_alphas:   list = [0.1, 1.0, 10.0],
-        reg_lambdas:  list = [1.0, 10.0, 100.0],
+        reg_alphas:   list = [0.01, 0.1, 0.5, 1.0, 5.0, 10.0],
+        reg_lambdas:  list = [0.1, 1.0, 5.0, 10.0, 50.0, 100.0],
         cv_folds:     int  = 5,
         n_estimators: int  = 300,
+        max_depth:    int  = 4,
+        learning_rate: float = 0.1,
+        subsample:    float = 0.8,
+        colsample_bytree: float = 0.8,
+        top_n_features: int = 100,
         min_features: int  = 10,
         random_seed:  int  = 42,
         n_jobs:       int  = -1,
     ):
-        self.reg_alphas   = reg_alphas
-        self.reg_lambdas  = reg_lambdas
-        self.cv_folds     = cv_folds
-        self.n_estimators = n_estimators
-        self.min_features = min_features
-        self.random_seed  = random_seed
-        self.n_jobs       = n_jobs
+        self.reg_alphas       = reg_alphas
+        self.reg_lambdas      = reg_lambdas
+        self.cv_folds         = cv_folds
+        self.n_estimators     = n_estimators
+        self.max_depth        = max_depth
+        self.learning_rate    = learning_rate
+        self.subsample        = subsample
+        self.colsample_bytree = colsample_bytree
+        self.top_n_features   = top_n_features
+        self.min_features     = min_features
+        self.random_seed      = random_seed
+        self.n_jobs           = n_jobs
 
     # ------------------------------------------------------------------
     # 내부 메서드

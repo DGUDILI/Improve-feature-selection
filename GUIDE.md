@@ -49,8 +49,8 @@ bash run.sh build
 
 | 인자 | 설명 | 기본값 |
 |------|------|--------|
-| `stacking_version` | Stacking 버전 (`v0`, `v0.5`, `v1`) | `v1` |
-| `ga_version` | GA 버전 (`v0`, `v1`, `v4`). 생략하면 GA 없이 실행 | 생략 |
+| `stacking_version` | Stacking 버전 (`v0`, `v0.5`, `v1`, `v3`, `v4`) | `v1` |
+| `ga_version` | GA 버전 (`v0`, `v1`, `v4`, `v5`). 생략하면 GA 없이 실행 | 생략 |
 | `clean` | `clean`을 입력하면 Train-Test 중복 제거 실행 | 생략 |
 
 ### 예시
@@ -62,6 +62,7 @@ bash run.sh build
 ./run.sh run v1 v4 clean          # Stacking v1 + GA v4 + 데이터 정제
 ./run.sh run v1 "" clean          # Stacking v1, GA 없음 + 데이터 정제
 ./run.sh run v0.5 v1              # Stacking v0.5 + GA v1, 정제 없음
+./run.sh run v4 v5                # Stacking v4 + GA v5 (권장: AUC 0.9731, MCC 0.8719)
 ```
 
 > - GA를 생략하면 `Feature.csv`의 전체 피처로 바로 Stacking을 실행합니다.
@@ -101,7 +102,7 @@ conda run -n dili_ml_pipeline_env python src/train.py --stacking v1 --ga v4 --cl
 | `v0` | `ga/ga_v0.py` | 원본 StackDILI GA — DEAP 기반, RF 5-fold CV 피트니스 |
 | `v1` | `ga/ga_v1.py` | MRMR + Boruta 앙상블 (분산 필터링 → MRMR → Boruta 교집합/합집합) |
 | `v4` | `ga/ga_v4.py` | XGBoost L1/L2 정규화 — CV로 최적 reg_alpha/reg_lambda 탐색, 중요도 > 0 피처 선택 |
-| `v5` | `ga/ga_v5.py` | 듀얼 패스 — Path A: VT+RF Top-128, Path B: SMILES→GCN→CrossAttention → 256-dim 임베딩 추가 |
+| `v5` | `ga/ga_v5.py` | 듀얼 패스 — Path A: VT+RF Top-128, Path B: SMILES→GCN→CrossAttention → 256-dim 임베딩 추가. epochs=100, batch=64, CosineAnnealingLR, weighted CrossEntropyLoss, Early Stopping(patience=12) |
 
 ### Stacking
 
@@ -110,16 +111,28 @@ conda run -n dili_ml_pipeline_env python src/train.py --stacking v1 --ga v4 --cl
 | `v0` | `stacking/stacking_v0.py` | 원본 StackDILI — 직접 예측 기반, ExtraTrees 메타 모델 |
 | `v0.5` | `stacking/stacking_v0_5.py` | OOF 기반, LR/SVC(스케일) + ExtraTrees 메타 모델 |
 | `v1` | `stacking/stacking_v1.py` | OOF 기반, LogisticRegression 메타 모델 + 피처 힌트 + MCC 임계값 최적화 |
+| `v3` | `stacking/stacking_v3.py` | OOF 기반, XGBoost 메타 + GNN 임베딩 PCA(50차원) 직접 입력 |
+| `v4` | `stacking/stacking_v4.py` | **권장** OOF 기반, 베이스 모델은 fp_cols만 사용(임베딩 제외), 소프트 보팅 + LR 중 자동 선택, AUC+MCC result.txt 저장 |
 
 **Stacking 버전 비교:**
 
-| | `v0` | `v0.5` | `v1` |
-|---|---|---|---|
-| 예측 방식 | 직접 예측 (데이터 누수) | OOF 5-fold | OOF 5-fold |
-| 베이스 모델 | RF, ET, HistGB, XGB | LR, SVC, RF, XGB, LGBM | RF, ET, HistGB, XGB |
-| 메타 모델 | ExtraTrees | ExtraTrees | LogisticRegression |
-| 피처 힌트 | 없음 | 없음 | TOP 5 피처 추가 |
-| 임계값 최적화 | 없음 | 없음 | 있음 (MCC 기준) |
+| | `v0` | `v0.5` | `v1` | `v3` | `v4` |
+|---|---|---|---|---|---|
+| 예측 방식 | 직접 예측 (누수) | OOF 5-fold | OOF 5-fold | OOF 5-fold | OOF 5-fold |
+| 베이스 모델 입력 | 전체 피처 | 전체 피처 | 전체 피처 | 전체 피처 | **fp_cols만** |
+| 메타 모델 | ExtraTrees | ExtraTrees | LogisticRegression | XGBoost | **소프트 보팅 or LR** |
+| 임베딩 처리 | - | - | - | PCA → 메타 입력 | 베이스 모델이 간접 반영 |
+| 임계값 최적화 | 없음 | 없음 | 있음 | 있음 | 있음 (MCC 기준) |
+| result.txt | AUC | AUC | AUC | AUC | **AUC + MCC** |
+
+**GA v5 조합별 실험 결과 (AUC 기준):**
+
+| 조합 | AUC | MCC | 비고 |
+|------|-----|-----|------|
+| `v0 + ga_v5` | 0.9731 | - | 데이터 누수 있음 |
+| `v1 + ga_v5` | 0.9515 | - | 임베딩이 베이스 모델 방해 |
+| `v3 + ga_v5_clean` | 0.9515 | - | |
+| **`v4 + ga_v5`** | **0.9731** | **0.8719** | **권장: 누수 없이 최고 성능** |
 
 ---
 

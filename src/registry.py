@@ -30,6 +30,12 @@ def _load_stacking(version: str):
     if version == "v1":
         from models.stackdili_fixed.stacking.stacking_v1 import StackingV1
         return StackingV1
+    if version == "v3":
+        from models.stackdili_fixed.stacking.stacking_v3 import StackingV3
+        return StackingV3
+    if version == "v4":
+        from models.stackdili_fixed.stacking.stacking_v4 import StackingV4
+        return StackingV4
     raise KeyError(f"Stacking 버전 '{version}'이 존재하지 않습니다. 가능한 버전: {list(STACKING_REGISTRY)}")
 
 
@@ -45,6 +51,9 @@ STACKING_REGISTRY = {
     "v0":   None,
     "v0.5": None,
     "v1":   None,
+    "v2":   None,
+    "v3":   None,
+    "v4":   None,
 }
 
 
